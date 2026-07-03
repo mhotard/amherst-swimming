@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swimming Holes near Amherst, MA</title>
+<meta name="description" content="An interactive map of local swimming holes, lake beaches, river spots, and waterfalls near Amherst, Massachusetts.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root {
+    --water: #1b6d85;
+    --water-dark: #114b5f;
+    --sand: #f6f1e7;
+    --ink: #22333b;
+    --pond: #2a9d8f;
+    --lake: #1d7fbf;
+    --river: #7b5ec7;
+    --waterfall: #e76f51;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); }
+  #app { display: flex; height: 100%; }
+
+  #sidebar {
+    width: 360px; min-width: 300px; overflow-y: auto;
+    background: var(--sand); border-right: 1px solid #ddd3c0;
+    display: flex; flex-direction: column;
+  }
+  header { padding: 18px 18px 10px; }
+  header h1 { margin: 0 0 4px; font-size: 1.35rem; color: var(--water-dark); }
+  header p { margin: 0; font-size: 0.85rem; color: #5a6a72; line-height: 1.4; }
+
+  #filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 18px 12px; }
+  .filter-btn {
+    border: 1.5px solid transparent; border-radius: 999px; padding: 4px 12px;
+    font-size: 0.8rem; cursor: pointer; background: #fff; color: var(--ink);
+    box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  }
+  .filter-btn[data-active="true"] { color: #fff; }
+  .filter-btn.pond[data-active="true"] { background: var(--pond); }
+  .filter-btn.lake[data-active="true"] { background: var(--lake); }
+  .filter-btn.river[data-active="true"] { background: var(--river); }
+  .filter-btn.waterfall[data-active="true"] { background: var(--waterfall); }
+  .filter-btn.all[data-active="true"] { background: var(--water-dark); }
+
+  #spot-list { list-style: none; margin: 0; padding: 0 12px 20px; flex: 1; }
+  .spot-card {
+    background: #fff; border-radius: 10px; padding: 12px 14px; margin: 0 6px 10px;
+    cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    border-left: 5px solid #ccc; transition: transform .08s ease;
+  }
+  .spot-card:hover { transform: translateX(3px); }
+  .spot-card.active { outline: 2px solid var(--water-dark); }
+  .spot-card.pond { border-left-color: var(--pond); }
+  .spot-card.lake { border-left-color: var(--lake); }
+  .spot-card.river { border-left-color: var(--river); }
+  .spot-card.waterfall { border-left-color: var(--waterfall); }
+  .spot-card h3 { margin: 0 0 2px; font-size: 0.98rem; }
+  .spot-card .meta { font-size: 0.78rem; color: #5a6a72; }
+
+  footer { padding: 10px 18px 16px; font-size: 0.72rem; color: #7a8790; line-height: 1.5; }
+  footer a { color: var(--water); }
+
+  #map { flex: 1; height: 100%; }
+
+  .popup-body { font-size: 0.85rem; line-height: 1.45; max-width: 260px; }
+  .popup-body h3 { margin: 0 0 2px; font-size: 1rem; color: var(--water-dark); }
+  .popup-body .meta { color: #5a6a72; font-size: 0.78rem; margin-bottom: 6px; }
+  .popup-body .warning {
+    background: #fdecea; color: #a3382c; border-radius: 6px;
+    padding: 6px 8px; margin-top: 8px; font-size: 0.78rem;
+  }
+  .popup-body .directions { display: inline-block; margin-top: 8px; font-size: 0.8rem; color: var(--water); }
+
+  .type-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; }
+
+  @media (max-width: 720px) {
+    #app { flex-direction: column; }
+    #map { height: 55%; order: -1; }
+    #sidebar { width: 100%; min-width: 0; height: 45%; border-right: none; border-top: 1px solid #ddd3c0; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <header>
+      <h1>Swimming Holes near Amherst</h1>
+      <p>Ponds, lake beaches, river holes, and waterfalls within an easy drive of Amherst, MA. Click a spot for details and directions.</p>
+    </header>
+    <div id="filters"></div>
+    <ul id="spot-list"></ul>
+    <footer>
+      Always check current water quality, flow, and posted rules before swimming — conditions change fast after rain.
+      Compiled from the <a href="https://valleyadvocate.com/2015/06/02/jump-in/">Valley Advocate</a>,
+      <a href="https://www.umass.edu/honors/news/wma-swimming-spots">UMass CHC guide</a>,
+      and <a href="https://www.newenglandswimmingholes.com/massachusetts">New England Swimming Holes</a>.
+      Map data © OpenStreetMap contributors.
+    </footer>
+  </aside>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="spots.js"></script>
+<script>
+  const TYPES = {
+    pond:      { label: "Ponds",      color: "#2a9d8f" },
+    lake:      { label: "Lakes",      color: "#1d7fbf" },
+    river:     { label: "Rivers",     color: "#7b5ec7" },
+    waterfall: { label: "Waterfalls", color: "#e76f51" }
+  };
+  const AMHERST = [42.3732, -72.5199];
+
+  const map = L.map("map", { scrollWheelZoom: true });
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  L.circleMarker(AMHERST, {
+    radius: 6, color: "#114b5f", fillColor: "#114b5f", fillOpacity: 1
+  }).addTo(map).bindTooltip("Amherst", { permanent: true, direction: "right", offset: [8, 0] });
+
+  function markerIcon(type) {
+    const c = TYPES[type].color;
+    return L.divIcon({
+      className: "",
+      html: `<svg width="28" height="38" viewBox="0 0 28 38" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 0C6.3 0 0 6.3 0 14c0 10 14 24 14 24s14-14 14-24C28 6.3 21.7 0 14 0z" fill="${c}"/>
+        <circle cx="14" cy="14" r="5.5" fill="#fff"/></svg>`,
+      iconSize: [28, 38], iconAnchor: [14, 38], popupAnchor: [0, -34]
+    });
+  }
+
+  function popupHtml(s) {
+    const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
+    return `<div class="popup-body">
+      <h3>${s.name}</h3>
+      <div class="meta">
+        <span class="type-dot" style="background:${TYPES[s.type].color}"></span>${s.town}
+        &nbsp;·&nbsp; ~${s.driveMin} min drive &nbsp;·&nbsp; ${s.fee}
+      </div>
+      ${s.blurb}
+      ${s.warning ? `<div class="warning">⚠️ ${s.warning}</div>` : ""}
+      <a class="directions" href="${gmaps}" target="_blank" rel="noopener">Directions →</a>
+    </div>`;
+  }
+
+  const markers = {};
+  const bounds = L.latLngBounds([AMHERST]);
+  SPOTS.forEach((s, i) => {
+    const m = L.marker([s.lat, s.lon], { icon: markerIcon(s.type) })
+      .bindPopup(popupHtml(s));
+    m.on("popupopen", () => highlightCard(i, false));
+    markers[i] = m;
+    m.addTo(map);
+    bounds.extend([s.lat, s.lon]);
+  });
+  map.fitBounds(bounds.pad(0.08));
+
+  // Sidebar list
+  const listEl = document.getElementById("spot-list");
+  const sorted = SPOTS.map((s, i) => ({ s, i })).sort((a, b) => a.s.driveMin - b.s.driveMin);
+  sorted.forEach(({ s, i }) => {
+    const li = document.createElement("li");
+    li.className = `spot-card ${s.type}`;
+    li.dataset.index = i;
+    li.innerHTML = `<h3>${s.name}</h3>
+      <div class="meta">${s.town} · ~${s.driveMin} min · ${TYPES[s.type].label.replace(/s$/, "")}</div>`;
+    li.addEventListener("click", () => {
+      map.flyTo([s.lat, s.lon], 13, { duration: 0.8 });
+      markers[i].openPopup();
+    });
+    listEl.appendChild(li);
+  });
+
+  function highlightCard(index, scroll = true) {
+    document.querySelectorAll(".spot-card").forEach(el => {
+      const on = Number(el.dataset.index) === index;
+      el.classList.toggle("active", on);
+      if (on && scroll) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  }
+
+  // Filters
+  const filtersEl = document.getElementById("filters");
+  let activeFilter = "all";
+  const filterDefs = [["all", "All spots"], ...Object.entries(TYPES).map(([k, v]) => [k, v.label])];
+  filterDefs.forEach(([key, label]) => {
+    const b = document.createElement("button");
+    b.className = `filter-btn ${key}`;
+    b.textContent = label;
+    b.dataset.active = String(key === "all");
+    b.addEventListener("click", () => {
+      activeFilter = key;
+      document.querySelectorAll(".filter-btn").forEach(x => x.dataset.active = "false");
+      b.dataset.active = "true";
+      applyFilter();
+    });
+    filtersEl.appendChild(b);
+  });
+
+  function applyFilter() {
+    SPOTS.forEach((s, i) => {
+      const show = activeFilter === "all" || s.type === activeFilter;
+      if (show) markers[i].addTo(map); else map.removeLayer(markers[i]);
+    });
+    document.querySelectorAll(".spot-card").forEach(el => {
+      const s = SPOTS[Number(el.dataset.index)];
+      el.style.display = (activeFilter === "all" || s.type === activeFilter) ? "" : "none";
+    });
+  }
+</script>
+</body>
+</html>
