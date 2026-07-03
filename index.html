@@ -72,6 +72,8 @@
     padding: 6px 8px; margin-top: 8px; font-size: 0.78rem;
   }
   .popup-body .directions { display: inline-block; margin-top: 8px; font-size: 0.8rem; color: var(--water); }
+  .popup-body .refs { margin-top: 8px; padding-top: 6px; border-top: 1px solid #e4ded1; font-size: 0.72rem; color: #7a8790; }
+  .popup-body .refs a { color: var(--water); }
 
   .type-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; }
 
@@ -92,11 +94,21 @@
     <div id="filters"></div>
     <ul id="spot-list"></ul>
     <footer>
-      Always check current water quality, flow, and posted rules before swimming — conditions change fast after rain.
-      Compiled from the <a href="https://valleyadvocate.com/2015/06/02/jump-in/">Valley Advocate</a>,
-      <a href="https://www.umass.edu/honors/news/wma-swimming-spots">UMass CHC guide</a>,
-      and <a href="https://www.newenglandswimmingholes.com/massachusetts">New England Swimming Holes</a>.
-      Map data © OpenStreetMap contributors.
+      <p><strong>About &amp; sources.</strong> This map was compiled in July 2026 from local guides and
+      first-hand recommendations: a
+      <a href="https://www.reddit.com/r/westernmass/comments/1uk0m6i/places_to_swim_in_western_mass/">r/westernmass discussion of places to swim</a>,
+      the <a href="https://valleyadvocate.com/2015/06/02/jump-in/">Valley Advocate's "Jump In" guide</a>,
+      the <a href="https://www.umass.edu/honors/news/wma-swimming-spots">UMass Commonwealth Honors College swimming guide</a>,
+      <a href="https://www.newenglandswimmingholes.com/massachusetts">New England Swimming Holes</a>,
+      and official pages from the <a href="https://www.mass.gov/orgs/department-of-conservation-recreation">Massachusetts DCR</a>
+      and <a href="https://thetrustees.org/">The Trustees of Reservations</a>.
+      Each spot's popup lists its specific references. Coordinates were checked against
+      <a href="https://www.openstreetmap.org/">OpenStreetMap</a>; a few markers noted as
+      "approximate" are placed from written directions rather than a mapped feature.</p>
+      <p>Always check current water quality, flow, and posted rules before swimming — conditions
+      change fast after rain, and access rules change year to year. For the Connecticut River,
+      see <a href="https://www.isitclean.us/">isitclean.us</a> (tested Thursdays, posted Fridays).
+      Map data © OpenStreetMap contributors.</p>
     </footer>
   </aside>
   <div id="map"></div>
@@ -137,6 +149,11 @@
 
   function popupHtml(s) {
     const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lon}`;
+    const refLinks = (s.refs || [])
+      .map(k => REFS[k])
+      .filter(Boolean)
+      .map(r => `<a href="${r.url}" target="_blank" rel="noopener">${r.label}</a>`)
+      .join(" · ");
     return `<div class="popup-body">
       <h3>${s.name}</h3>
       <div class="meta">
@@ -146,6 +163,7 @@
       ${s.blurb}
       ${s.warning ? `<div class="warning">⚠️ ${s.warning}</div>` : ""}
       <a class="directions" href="${gmaps}" target="_blank" rel="noopener">Directions →</a>
+      ${refLinks ? `<div class="refs">Sources: ${refLinks}</div>` : ""}
     </div>`;
   }
 
